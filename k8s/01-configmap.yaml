@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+  namespace: ecommerce
+data:
+  # PostgreSQL Configuration (using port 5433 on host to avoid conflicts)
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"  # Internal cluster port
+  POSTGRES_USER: postgres
+  POSTGRES_DB: ecommerce
+
+  # Redis Configuration
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+
+  # Service URLs (internal cluster DNS)
+  USER_SERVICE_URL: "svc-user-django:50051"
+  LISTING_SERVICE_URL: "svc-listing-spring:9090"
+  INVENTORY_SERVICE_URL: "svc-inventory-rails:50051"
+
+  # API Gateway
+  API_GATEWAY_PORT: "8080"
+
+  # Environment
+  ENVIRONMENT: "development"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-secrets
+  namespace: ecommerce
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: postgres
+  JWT_SECRET: dev-secret-key-change-in-production
+  DJANGO_SECRET_KEY: dev-django-secret-key-change-in-production
+  RAILS_SECRET_KEY_BASE: dev-rails-secret-key-base-change-in-production

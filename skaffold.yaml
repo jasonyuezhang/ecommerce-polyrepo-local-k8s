@@ -1,0 +1,51 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: ecommerce-polyrepo
+
+build:
+  artifacts:
+  - image: ecommerce-frontend
+    context: ../fe-nextjs
+    docker:
+      dockerfile: Dockerfile.dev
+  - image: ecommerce-api-gateway
+    context: ../be-api-gin
+    docker:
+      dockerfile: Dockerfile.dev
+  - image: ecommerce-user-service
+    context: ../svc-user-django
+    docker:
+      dockerfile: Dockerfile.dev
+  - image: ecommerce-listing-service
+    context: ../svc-listing-spring
+    docker:
+      dockerfile: Dockerfile.dev
+  - image: ecommerce-inventory-service
+    context: ../svc-inventory-rails
+    docker:
+      dockerfile: Dockerfile.dev
+  local:
+    push: false
+
+deploy:
+  kubectl:
+    manifests:
+    - k8s/*.yaml
+
+portForward:
+- resourceType: service
+  resourceName: fe-nextjs
+  namespace: ecommerce
+  port: 3000
+  localPort: 3000
+- resourceType: service
+  resourceName: be-api-gin
+  namespace: ecommerce
+  port: 8080
+  localPort: 8080
+- resourceType: service
+  resourceName: postgres
+  namespace: ecommerce
+  port: 5432
+  localPort: 5433  # Port 5433 on host to avoid conflict with propel-gtm
