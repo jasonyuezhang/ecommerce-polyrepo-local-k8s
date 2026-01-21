@@ -2,6 +2,67 @@
 
 This directory contains Kubernetes configurations for running the e-commerce microservices on **Minikube**.
 
+## 🎯 About This Repository
+
+This repository is part of the **ecommerce-polyrepo** project - a polyrepo setup designed for testing the [Propel](https://propel.us) code review feature across multiple microservices.
+
+### Role in Microservices Architecture
+
+This repository provides the **local Kubernetes development environment** for all microservices:
+
+```
+┌──────────────────────────────────────────┐
+│      Minikube Cluster [THIS REPO]       │
+│  ┌────────────────────────────────────┐ │
+│  │     Namespace: ecommerce            │ │
+│  │  ┌──────────┐  ┌──────────────┐   │ │
+│  │  │ Frontend │  │ API Gateway  │   │ │
+│  │  │(Next.js) │→ │   (Go/Gin)   │   │ │
+│  │  └──────────┘  └──────┬───────┘   │ │
+│  │                       │ gRPC       │ │
+│  │  ┌──────────┐  ┌──────▼──────┐   │ │
+│  │  │   User   │  │   Listing   │   │ │
+│  │  │ Service  │  │   Service   │   │ │
+│  │  └──────────┘  └─────────────┘   │ │
+│  │  ┌──────────┐  ┌─────────────┐   │ │
+│  │  │Inventory │  │ PostgreSQL  │   │ │
+│  │  │ Service  │  │   Redis     │   │ │
+│  │  └──────────┘  └─────────────┘   │ │
+│  └────────────────────────────────────┘ │
+└──────────────────────────────────────────┘
+```
+
+### Quick Start (Standalone Testing)
+
+To run the full microservices stack locally:
+
+```bash
+# 1. Install prerequisites
+brew install minikube kubectl docker
+
+# 2. Check for port conflicts
+make port-check
+
+# 3. Start infrastructure only (PostgreSQL + Redis)
+make start-infra-only
+
+# 4. Check status
+make status
+
+# 5. Access services via NodePort
+# Get minikube IP
+minikube ip
+# Frontend: http://<minikube-ip>:30300
+# API Gateway: http://<minikube-ip>:30080
+
+# 6. Stop when done
+make stop
+```
+
+**Note:** This provides local Kubernetes testing. For production AWS EKS deployment, see `infra-terraform-eks/` in the [parent polyrepo](https://github.com/jasonyuezhang/ecommerce-polyrepo). PostgreSQL runs on port 5433 to avoid conflicts with other projects.
+
+---
+
 ## 🚨 Important: Port Configuration
 
 **This setup uses PostgreSQL port 5433** to avoid conflicts with the propel-gtm project which uses port 5432.
