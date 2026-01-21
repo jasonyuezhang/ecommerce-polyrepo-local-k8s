@@ -1,4 +1,4 @@
-.PHONY: help start stop restart status deploy build clean logs shell db-migrate db-seed port-forward
+.PHONY: help start stop restart status deploy build clean logs shell db-migrate db-seed port-forward localstack-start localstack-stop localstack-deploy localstack-test localstack-cleanup localstack-logs
 
 # Variables
 NAMESPACE := ecommerce
@@ -255,6 +255,162 @@ minikube-dashboard: ## Open Kubernetes dashboard
 minikube-tunnel: ## Create minikube tunnel for LoadBalancer services
 	@echo "$(GREEN)Creating minikube tunnel (requires sudo)...$(NC)"
 	minikube tunnel
+
+##@ LocalStack (AWS Local Development)
+
+localstack-start: ## Start LocalStack for local AWS service emulation
+	@echo "$(GREEN)Starting LocalStack...$(NC)"
+	cd infra-terraform-eks && ./scripts/start-localstack.sh
+
+localstack-stop: ## Stop LocalStack
+	@echo "$(YELLOW)Stopping LocalStack...$(NC)"
+	cd infra-terraform-eks && docker-compose -f docker-compose.localstack.yml down
+
+localstack-deploy: ## Deploy infrastructure to LocalStack
+	@echo "$(GREEN)Deploying infrastructure to LocalStack...$(NC)"
+	cd infra-terraform-eks && ./scripts/deploy-localstack.sh
+
+localstack-test: ## Test LocalStack AWS services
+	@echo "$(GREEN)Testing LocalStack services...$(NC)"
+	cd infra-terraform-eks && ./scripts/test-localstack.sh
+
+localstack-cleanup: ## Cleanup LocalStack resources and data
+	@echo "$(RED)Cleaning up LocalStack...$(NC)"
+	cd infra-terraform-eks && ./scripts/cleanup-localstack.sh
+
+localstack-logs: ## Show LocalStack logs
+	@echo "$(GREEN)Showing LocalStack logs...$(NC)"
+	cd infra-terraform-eks && docker-compose -f docker-compose.localstack.yml logs -f localstack
+
+##@ Git & PR Management
+
+SUBMODULES := be-api-gin fe-nextjs infra-terraform-eks local-k8s proto-schemas svc-inventory-rails svc-listing-spring svc-user-django
+
+git-status: ## Show git status for all submodules
+	@echo "$(GREEN)Git Status - All Submodules$(NC)"
+	@echo "============================================"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			echo "\n$(YELLOW)$$submodule:$(NC)"; \
+			cd $$submodule && git status --short && cd ..; \
+		fi \
+	done
+
+git-check-changes: ## Check which submodules have uncommitted changes
+	@echo "$(GREEN)Checking for changes in submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			cd $$submodule; \
+			if [ -n "$$(git status --porcelain)" ]; then \
+				echo "$(YELLOW)✓ $$submodule has changes$(NC)"; \
+			fi; \
+			cd ..; \
+		fi \
+	done
+
+git-commit-all: ## Commit changes in all submodules with changes (COMMIT_MSG required)
+	@if [ -z "$(COMMIT_MSG)" ]; then \
+		echo "$(RED)Error: COMMIT_MSG is required$(NC)"; \
+		echo "Usage: make git-commit-all COMMIT_MSG=\"your message\""; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Committing changes in all submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			cd $$submodule; \
+			if [ -n "$$(git status --porcelain)" ]; then \
+				echo "\n$(YELLOW)Committing $$submodule...$(NC)"; \
+				git add -A; \
+				git commit -m "$(COMMIT_MSG)" || true; \
+			fi; \
+			cd ..; \
+		fi \
+	done
+	@echo "$(GREEN)Done committing changes$(NC)"
+
+git-push-all: ## Push all submodules to their remote branches
+	@echo "$(GREEN)Pushing all submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			echo "\n$(YELLOW)Pushing $$submodule...$(NC)"; \
+			cd $$submodule && git push && cd ..; \
+		fi \
+	done
+	@echo "$(GREEN)Done pushing all submodules$(NC)"
+
+git-create-pr-all: ## Create PRs for all submodules with pushed branches (PR_TITLE and PR_BODY required)
+	@if [ -z "$(PR_TITLE)" ]; then \
+		echo "$(RED)Error: PR_TITLE is required$(NC)"; \
+		echo "Usage: make git-create-pr-all PR_TITLE=\"your title\" PR_BODY=\"your description\""; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Creating PRs for all submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			cd $$submodule; \
+			CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+			if [ "$$CURRENT_BRANCH" != "main" ]; then \
+				echo "\n$(YELLOW)Creating PR for $$submodule (branch: $$CURRENT_BRANCH)...$(NC)"; \
+				gh pr create --title "$(PR_TITLE)" --body "$(PR_BODY)" --base main --head $$CURRENT_BRANCH || true; \
+			else \
+				echo "\n$(YELLOW)Skipping $$submodule (already on main branch)$(NC)"; \
+			fi; \
+			cd ..; \
+		fi \
+	done
+	@echo "$(GREEN)Done creating PRs$(NC)"
+
+git-workflow: ## Complete workflow: commit, push, and create PRs (COMMIT_MSG, PR_TITLE, PR_BODY required)
+	@if [ -z "$(COMMIT_MSG)" ] || [ -z "$(PR_TITLE)" ]; then \
+		echo "$(RED)Error: COMMIT_MSG and PR_TITLE are required$(NC)"; \
+		echo "Usage: make git-workflow COMMIT_MSG=\"commit msg\" PR_TITLE=\"PR title\" PR_BODY=\"PR description\""; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Running complete git workflow...$(NC)"
+	@$(MAKE) git-commit-all COMMIT_MSG="$(COMMIT_MSG)"
+	@$(MAKE) git-push-all
+	@$(MAKE) git-create-pr-all PR_TITLE="$(PR_TITLE)" PR_BODY="$(PR_BODY)"
+	@echo "$(GREEN)✓ Workflow complete!$(NC)"
+
+git-sync-submodules: ## Update parent repo to track latest submodule commits
+	@echo "$(GREEN)Syncing submodule references in parent repo...$(NC)"
+	@git add $(SUBMODULES)
+	@if [ -n "$$(git diff --cached --exit-code)" ]; then \
+		git commit -m "Update submodule references"; \
+		echo "$(GREEN)✓ Parent repo updated with latest submodule commits$(NC)"; \
+	else \
+		echo "$(YELLOW)No submodule changes to sync$(NC)"; \
+	fi
+
+git-branch-all: ## Create a new branch in all submodules (BRANCH_NAME required)
+	@if [ -z "$(BRANCH_NAME)" ]; then \
+		echo "$(RED)Error: BRANCH_NAME is required$(NC)"; \
+		echo "Usage: make git-branch-all BRANCH_NAME=\"feature/my-feature\""; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Creating branch $(BRANCH_NAME) in all submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			echo "$(YELLOW)Creating branch in $$submodule...$(NC)"; \
+			cd $$submodule && git checkout -b $(BRANCH_NAME) && cd ..; \
+		fi \
+	done
+	@echo "$(GREEN)Done creating branches$(NC)"
+
+git-checkout-main-all: ## Checkout main branch in all submodules
+	@echo "$(GREEN)Checking out main branch in all submodules...$(NC)"
+	@for submodule in $(SUBMODULES); do \
+		if [ -d "$$submodule" ]; then \
+			echo "$(YELLOW)Checking out main in $$submodule...$(NC)"; \
+			cd $$submodule && git checkout main && cd ..; \
+		fi \
+	done
+	@echo "$(GREEN)Done checking out main$(NC)"
+
+git-pull-all: ## Pull latest changes for all submodules
+	@echo "$(GREEN)Pulling latest changes for all submodules...$(NC)"
+	@git submodule update --remote --merge
+	@echo "$(GREEN)Done pulling changes$(NC)"
 
 ##@ Quick Commands
 
