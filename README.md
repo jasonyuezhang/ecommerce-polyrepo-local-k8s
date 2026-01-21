@@ -13,13 +13,17 @@ This directory contains Kubernetes configurations for running the e-commerce mic
 | PostgreSQL | 5433 | 5432 | 30543 |
 | Redis | 6379 | 6379 | - |
 | Frontend | 3000 | 3000 | 30300 |
-| API Gateway | 8080 | 8080 | 30080 |
+| API Gateway (REST) | 8080 | 8080 | 30080 |
+| GraphQL Gateway (HTTP) | 8080 | 8080 | 30900 |
+| GraphQL Gateway (WebSocket) | 8081 | 8081 | 30901 |
 | User Service (REST) | 8001 | 8000 | 30801 |
 | User Service (gRPC) | 50051 | 50051 | 30051 |
 | Listing Service (REST) | 8082 | 8080 | 30802 |
 | Listing Service (gRPC) | 9090 | 9090 | 30909 |
 | Inventory Service (REST) | 3001 | 3000 | 30301 |
 | Inventory Service (gRPC) | 50052 | 50051 | 30052 |
+
+**Note**: GraphQL Gateway (`be-graphql-go`) is coming soon for complex data aggregations and real-time subscriptions.
 
 ## Prerequisites
 
