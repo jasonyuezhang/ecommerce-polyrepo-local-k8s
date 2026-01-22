@@ -16,7 +16,7 @@ spec:
       containers:
       - name: user-service
         image: ecommerce-user-service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Never
         env:
         - name: DEBUG
           value: "1"
