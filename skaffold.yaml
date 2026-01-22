@@ -28,10 +28,12 @@ build:
   local:
     push: false
 
-deploy:
-  kubectl:
-    manifests:
+manifests:
+  rawYaml:
     - k8s/*.yaml
+
+deploy:
+  kubectl: {}
 
 portForward:
 - resourceType: service
