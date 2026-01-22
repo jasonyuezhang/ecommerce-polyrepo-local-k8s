@@ -16,8 +16,11 @@ data:
 
   # Service URLs (internal cluster DNS)
   USER_SERVICE_URL: "svc-user-django:50051"
+  USER_SERVICE_ADDR: "svc-user-django:50051"
   LISTING_SERVICE_URL: "svc-listing-spring:9090"
-  INVENTORY_SERVICE_URL: "svc-inventory-rails:50051"
+  LISTING_SERVICE_ADDR: "svc-listing-spring:9090"
+  INVENTORY_SERVICE_URL: "svc-inventory-rails:50052"
+  INVENTORY_SERVICE_ADDR: "svc-inventory-rails:50052"
 
   # API Gateway
   API_GATEWAY_PORT: "8080"
