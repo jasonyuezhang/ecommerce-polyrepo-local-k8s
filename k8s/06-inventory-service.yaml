@@ -50,7 +50,7 @@ spec:
               name: ecommerce-secrets
               key: RAILS_SECRET_KEY_BASE
         - name: GRPC_PORT
-          value: "50052"
+          value: "50051"
         ports:
         - containerPort: 3000
           name: http
